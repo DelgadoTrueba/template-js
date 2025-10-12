@@ -141,7 +141,9 @@ export const createDatetimeFormatter = (
         );
       } else {
         // Los segmentos en índices impares están dentro de corchetes - extraer el contenido literal
-        return segment.replace(/^\[|\]$/g, '');
+        return segment.startsWith('[') && segment.endsWith(']')
+          ? segment.slice(1, -1)
+          : segment;
       }
     });
 
