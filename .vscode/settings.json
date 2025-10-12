@@ -1,5 +1,9 @@
 {
   "editor.formatOnSave": true,
   "files.eol": "\n",
-  "typescript.tsdk": "node_modules\\typescript\\lib"
+  "typescript.tsdk": "node_modules\\typescript\\lib",
+  "sonarlint.connectedMode.project": {
+    "connectionId": "delgadotrueba",
+    "projectKey": "DelgadoTrueba_com.delgadotrueba.template.js.lib"
+  }
 }

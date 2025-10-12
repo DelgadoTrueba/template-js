@@ -34,7 +34,7 @@ function assertValidDatetime(dateParts: Parts) {
     Temporal.PlainDate.from({ year, month, day });
     Temporal.PlainTime.from({ hour, minute, second, millisecond });
   } catch {
-    throw new Error(`Nonexistent calendar date: ${dateParts}`);
+    throw new Error(`Nonexistent calendar date: ${JSON.stringify(dateParts)}`);
   }
 }
 
@@ -43,13 +43,13 @@ function buildRegex(format: string): {
   groupOrder: (keyof Parts)[];
 } {
   const formatsMap: Record<string, { key: keyof Parts; pattern: string }> = {
-    YYYY: { key: 'year', pattern: '(\\d{4})' },
-    MM: { key: 'month', pattern: '(\\d{2})' },
-    DD: { key: 'day', pattern: '(\\d{2})' },
-    HH: { key: 'hour', pattern: '(\\d{2})' },
-    mm: { key: 'minute', pattern: '(\\d{2})' },
-    ss: { key: 'second', pattern: '(\\d{2})' },
-    sss: { key: 'millisecond', pattern: '(\\d{3})' },
+    YYYY: { key: 'year', pattern: String.raw`(\d{4})` },
+    MM: { key: 'month', pattern: String.raw`(\d{2})` },
+    DD: { key: 'day', pattern: String.raw`(\d{2})` },
+    HH: { key: 'hour', pattern: String.raw`(\d{2})` },
+    mm: { key: 'minute', pattern: String.raw`(\d{2})` },
+    ss: { key: 'second', pattern: String.raw`(\d{2})` },
+    sss: { key: 'millisecond', pattern: String.raw`(\d{3})` },
   };
   const formatRegex = new RegExp(Object.keys(formatsMap).join('|'), 'g');
 
@@ -71,7 +71,8 @@ const parseWithFormat = (
   timeZone: string,
 ): Date => {
   const { regex, groupOrder } = buildRegex(format);
-  const m = dateString.match(regex);
+  const m = regex.exec(dateString);
+
   if (!m) {
     throw new Error(
       `La fecha "${dateString}" no coincide con el formato "${format}".`,
@@ -79,8 +80,9 @@ const parseWithFormat = (
   }
 
   const parts: Parts = {};
+
   groupOrder.forEach((key, i) => {
-    parts[key] = parseInt(m[i + 1], 10);
+    parts[key] = Number.parseInt(m[i + 1], 10);
   });
 
   const {
