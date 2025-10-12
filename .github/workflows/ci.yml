@@ -115,3 +115,34 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: SonarCloud resul
+        id: sonar_url
+        run: |
+          set -euo pipefail
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+
+          PROJECT_KEY="$(grep -E '^sonar.projectKey=' sonar-project.properties | cut -d'=' -f2)"
+
+          if [ -z "${PROJECT_KEY:-}" ]; then
+            echo "No se encontró sonar.projectKey en sonar-project.properties" >&2
+            exit 1
+          fi
+
+          URL="https://sonarcloud.io/dashboard?id=${PROJECT_KEY}&pullRequest=${PR_NUMBER}"
+          echo "url=${URL}" >> "$GITHUB_OUTPUT"
+
+      - name: Comment SonarCloud link on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.payload.pull_request.number;
+            const body = `🔎 **SonarCloud**: ${process.env.SONAR_URL}`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body
+            });
+        env:
+          SONAR_URL: ${{ steps.sonar_url.outputs.url }}
