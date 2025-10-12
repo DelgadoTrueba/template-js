@@ -9,7 +9,8 @@ on:
 
 permissions:
   contents: read
-  pull-requests: read
+  issues: write
+  pull-requests: write
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -51,7 +52,63 @@ jobs:
         run: pnpm run build
 
       - name: Size 📏
-        run: pnpm run size
+        id: size
+        shell: bash
+        run: |
+          set -o pipefail
+          OUT="size-report.txt"
+          # Evita códigos de color para que el comentario se vea limpio
+          export FORCE_COLOR=0
+          export NO_COLOR=1
+
+          # Ejecuta y captura stdout + stderr en el archivo y en el log
+          ( pnpm run size ) > >(tee "$OUT") 2> >(tee -a "$OUT" >&2)
+          EXIT_CODE=${PIPESTATUS[0]}
+
+          # Publica como output multilínea
+          {
+            echo "report<<EOF"
+            cat "$OUT"
+            echo "EOF"
+            echo "exit_code=$EXIT_CODE"
+          } >> "$GITHUB_OUTPUT"
+
+          exit 0
+
+      - name: Size 📏 (Comment)
+        uses: actions/github-script@v7
+        env:
+          REPORT: ${{ steps.size.outputs.report }}
+          EXIT_CODE: ${{ steps.size.outputs.exit_code }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const number = context.payload.pull_request.number;
+            const ok = process.env.EXIT_CODE === "0";
+            const title = ok ? "✅ Size report (pasó)" : "❌ Size report (falló)";
+            const body = [
+              `### ${title}`,
+              "",
+              "<details><summary>Salida de <code>pnpm run size</code></summary>",
+              "",
+              "```text",
+              process.env.REPORT || "(sin salida)",
+              "```",
+              "",
+              "</details>"
+            ].join("\n");
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: number,
+              body
+            });
+
+      - name: Size 📏 (Status)
+        if: ${{ steps.size.outputs.exit_code != '0' }}
+        run: |
+          echo "size-limit devolvió exit code ${{ steps.size.outputs.exit_code }}"
+          exit 1
 
       - name: SonarCloud scan 🔍
         uses: SonarSource/sonarqube-scan-action@v6
